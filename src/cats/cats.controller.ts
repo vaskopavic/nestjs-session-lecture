@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  Body,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { Request } from 'express';
 
 import { CatsService } from './cats.service';
 import { CreateCatDto } from './dto/create-cat.dto';
@@ -9,8 +18,25 @@ export class CatsController {
   constructor(private readonly catsService: CatsService) {}
 
   @Post()
-  async create(@Body() createCatDto: CreateCatDto): Promise<Cat> {
-    return this.catsService.create(createCatDto);
+  async create(
+    @Req() request: Request,
+    @Body() createCatDto: CreateCatDto,
+  ): Promise<Cat> {
+    const cat = await this.catsService.create(createCatDto);
+    request.session.cat = cat;
+
+    new Promise((resolve, reject) => {
+      request.session.save((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve('success');
+        }
+      });
+    });
+    console.log(request.session);
+
+    return cat;
   }
 
   @Get()
@@ -24,7 +50,18 @@ export class CatsController {
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
+  async delete(@Req() request: Request, @Param('id') id: string): Promise<Cat> {
+    new Promise((resolve, reject) => {
+      request.session.destroy((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve('success');
+        }
+      });
+    });
+    console.log(request.session);
+
     return this.catsService.delete(id);
   }
 }
